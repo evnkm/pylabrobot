@@ -610,8 +610,32 @@ class Container extends Resource {
     return `rgba(239, 35, 60, ${volume / maxVolume})`;
   }
 
+  static colorForLiquid(liquidName, alpha = 1.0) {
+    const baseColor = getColorForLiquid(liquidName);
+    // Extract RGB components from hex color
+    const r = parseInt(baseColor.slice(1, 3), 16);
+    const g = parseInt(baseColor.slice(3, 5), 16);
+    const b = parseInt(baseColor.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   getVolume() {
     return this.liquids.reduce((acc, liquid) => acc + liquid.volume, 0);
+  }
+
+  getLiquidName() {
+    // Get the name of the predominant liquid
+    if (this.liquids.length === 0) return null;
+
+    // Find the liquid with the largest volume
+    let maxVolumeIndex = 0;
+    for (let i = 1; i < this.liquids.length; i++) {
+      if (this.liquids[i].volume > this.liquids[maxVolumeIndex].volume) {
+        maxVolumeIndex = i;
+      }
+    }
+
+    return this.liquids[maxVolumeIndex].name;
   }
 
   aspirate(volume) {
@@ -694,7 +718,10 @@ class Container extends Resource {
 class Trough extends Container {
   drawMainShape() {
     let mainShape = new Konva.Group();
+    const fillRatio = this.getVolume() / this.maxVolume;
+    const liquidColor = this.getLiquidName();
 
+    // Background container
     let background = new Konva.Rect({
       width: this.size_x,
       height: this.size_y,
@@ -703,16 +730,27 @@ class Trough extends Container {
       strokeWidth: 1,
     });
 
-    let liquidLayer = new Konva.Rect({
-      width: this.size_x,
-      height: this.size_y,
-      fill: Trough.colorForVolume(this.getVolume(), this.maxVolume),
-      stroke: "black",
-      strokeWidth: 1,
-    });
+    // Liquid fill - height based on volume
+    if (fillRatio > 0) {
+      let liquidHeight = fillRatio * this.size_y;
+      let liquidY = this.size_y - liquidHeight; // Start from bottom
 
-    mainShape.add(background);
-    mainShape.add(liquidLayer);
+      let liquidLayer = new Konva.Rect({
+        x: 0,
+        y: liquidY,
+        width: this.size_x,
+        height: liquidHeight,
+        fill: Container.colorForLiquid(liquidColor),
+        stroke: "black",
+        strokeWidth: 0.5,
+      });
+
+      mainShape.add(background);
+      mainShape.add(liquidLayer);
+    } else {
+      mainShape.add(background);
+    }
+
     return mainShape;
   }
 }
@@ -728,23 +766,76 @@ class Well extends Container {
   }
 
   drawMainShape() {
+    const fillRatio = this.getVolume() / this.maxVolume;
+    const liquidColor = this.getLiquidName();
+
     if (this.cross_section_type === "circle") {
-      return new Konva.Circle({
+      // For circular wells, we'll use a group with a background circle and a liquid circle
+      let wellGroup = new Konva.Group();
+
+      // Background circle
+      let background = new Konva.Circle({
         radius: this.size_x / 2,
-        fill: Well.colorForVolume(this.getVolume(), this.maxVolume),
+        fill: "white",
         stroke: "black",
         strokeWidth: 1,
         offsetX: -this.size_x / 2,
         offsetY: -this.size_y / 2,
       });
+
+      wellGroup.add(background);
+
+      // Only draw liquid if there is some
+      if (fillRatio > 0) {
+        let liquidRadius = (this.size_x / 2) * Math.sqrt(fillRatio);
+
+        let liquid = new Konva.Circle({
+          radius: liquidRadius,
+          fill: Container.colorForLiquid(liquidColor),
+          stroke: "black",
+          strokeWidth: 0.5,
+          offsetX: -this.size_x / 2,
+          offsetY: -this.size_y / 2,
+        });
+
+        wellGroup.add(liquid);
+      }
+
+      return wellGroup;
     } else {
-      return new Konva.Rect({
+      // For rectangular wells, we'll use a group with a background rectangle and a liquid rectangle
+      let wellGroup = new Konva.Group();
+
+      // Background rectangle
+      let background = new Konva.Rect({
         width: this.size_x,
         height: this.size_y,
-        fill: Well.colorForVolume(this.getVolume(), this.maxVolume),
+        fill: "white",
         stroke: "black",
         strokeWidth: 1,
       });
+
+      wellGroup.add(background);
+
+      // Only draw liquid if there is some
+      if (fillRatio > 0) {
+        let liquidHeight = fillRatio * this.size_y;
+        let liquidY = this.size_y - liquidHeight; // Start from bottom
+
+        let liquid = new Konva.Rect({
+          x: 0,
+          y: liquidY,
+          width: this.size_x,
+          height: liquidHeight,
+          fill: Container.colorForLiquid(liquidColor),
+          stroke: "black",
+          strokeWidth: 0.5,
+        });
+
+        wellGroup.add(liquid);
+      }
+
+      return wellGroup;
     }
   }
 }
@@ -945,14 +1036,41 @@ class Tube extends Container {
   }
 
   drawMainShape() {
-    return new Konva.Circle({
+    const fillRatio = this.getVolume() / this.maxVolume;
+    const liquidColor = this.getLiquidName();
+
+    // Create a group that will contain both the tube outline and liquid fill
+    let tubeGroup = new Konva.Group();
+
+    // Tube outline
+    let tubeOutline = new Konva.Circle({
       radius: (1.25 * this.size_x) / 2,
-      fill: Tube.colorForVolume(this.getVolume(), this.maxVolume),
+      fill: "white",
       stroke: "black",
       strokeWidth: 1,
       offsetX: -this.size_x / 2,
       offsetY: -this.size_y / 2,
     });
+
+    tubeGroup.add(tubeOutline);
+
+    // Only draw liquid if there is some
+    if (fillRatio > 0) {
+      let liquidRadius = ((1.25 * this.size_x) / 2) * Math.sqrt(fillRatio);
+
+      let liquid = new Konva.Circle({
+        radius: liquidRadius,
+        fill: Container.colorForLiquid(liquidColor),
+        stroke: "black",
+        strokeWidth: 0.5,
+        offsetX: -this.size_x / 2,
+        offsetY: -this.size_y / 2,
+      });
+
+      tubeGroup.add(liquid);
+    }
+
+    return tubeGroup;
   }
 }
 
@@ -960,6 +1078,40 @@ class LiquidHandler extends Resource {
   drawMainShape() {
     return undefined; // just draw the children (deck and so on)
   }
+}
+
+// Create a global color mapping for liquid names
+// This will ensure consistent colors across different containers
+const liquidColorMap = {};
+const predefinedColors = [
+  "#FF5733", // Reddish orange
+  "#33FF57", // Green
+  "#3357FF", // Blue
+  "#FF33F5", // Pink
+  "#FFD433", // Yellow
+  "#33FFF5", // Cyan
+  "#D433FF", // Purple
+  "#FF8F33", // Orange
+  "#8FFF33", // Lime green
+  "#338FFF", // Light blue
+  "#FF33A1", // Magenta
+  "#A1FF33", // Light green
+];
+let colorIndex = 0;
+
+function getColorForLiquid(liquidName) {
+  if (!liquidName || liquidName === "Unknown liquid" || liquidName === "None") {
+    return "#FF5733"; // Default red color for unknown liquids
+  }
+
+  if (!liquidColorMap[liquidName]) {
+    // Assign a new color from the predefined list, or cycle through them
+    liquidColorMap[liquidName] =
+      predefinedColors[colorIndex % predefinedColors.length];
+    colorIndex++;
+  }
+
+  return liquidColorMap[liquidName];
 }
 
 function classForResourceType(type) {
