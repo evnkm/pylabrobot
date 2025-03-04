@@ -1,0 +1,3 @@
+[submodule "protocol-designer"]
+	path = protocol-designer
+	url = https://github.com/evnkm/protocol-designer
