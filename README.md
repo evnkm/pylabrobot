@@ -10,7 +10,8 @@
 </div>
 
 # Note from Evan:
-The Protocol Designer frontend is located at the `protocol-designer` folder. After cloning the repository and switching to the `viz-fixes` branch, use `git submodule update --init --recursive` to get the `protocol-designer` code.
+The Protocol Designer frontend is located at the `protocol-designer` folder. After cloning the repository, use `git submodule update --init --recursive` to get the `protocol-designer` code.
+Alternatively, you can clone the repo with `git clone --recurse-submodules https://github.com/evnkm/pylabrobot.git`
 
 
 ## What is PyLabRobot?
