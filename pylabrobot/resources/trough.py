@@ -48,3 +48,4 @@ class Trough(Container):
     )
     self.through_base_to_container_base = through_base_to_container_base
     self.bottom_type = bottom_type
+    self.tracker.register_callback(self._state_updated)
